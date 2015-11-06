@@ -87,10 +87,12 @@ int main(void)
 	while(1)
 	{		
 		// If the 562us timer expired then it is time to update state machine
+		/*
 		if (mod_period_flag) {
 			mod_period_flag = 0;
-			tx_state_machine(&current_state, &pulse_count, IR_address,  IR_data_RED);	  //<--- TX CHANGE HERE!!				
+			tx_state_machine(&current_state, &pulse_count, IR_address,  IR_data_GREEN);	  //<--- TX CHANGE HERE!!				
 		}
+		*/
 		
 		// If RX port senses an edge, store the timer count
 		if (rx_interrupt_flag) {
@@ -478,9 +480,14 @@ void rx_handler()
 	rx_current_state++;
 	
 	// If we've reached the stop bit, then do post processing. Then reset state back to inactive
-	if (rx_current_state == 67)
+	if (rx_current_state == 68)
 	{
 		postProcess(edge_timeStamp);
+		
+	
+		//New
+		delay_timer_0A(300);
+		rx_interrupt_flag = 0;
 		rx_current_state = -1;
 		return;
 	}	
