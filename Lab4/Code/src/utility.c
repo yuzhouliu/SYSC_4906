@@ -29,14 +29,3 @@ static void pushButton_nvic_init(void)
 	NVIC->ICPR[0] = (1UL << 30);	//Clear pending bit to be safe
 	NVIC->ISER[0] = (1UL << 30);	//Enable interrup at NVIC
 }
-
-/* TODO move this function to lab4_main */
-void GPIOF_Handler(void)
-{
-	// If Interrupt caused by PF4
-	if(GPIOF->RIS & (1UL << 4))
-	{
-		GPIOF->ICR |= (1UL << 4);	// Clear Interrupt
-		NVIC->ICPR[0] = (1UL << 30); 	// Clear pending bit from NVIC
-	}
-}
