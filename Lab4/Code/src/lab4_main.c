@@ -11,6 +11,8 @@ int main(void)
 	
 	UART_init();
 	
+	init_timer_0B();		// Init periodic timer that interrupts every second
+	
 	while(1)
 	{}	
 }
@@ -36,4 +38,16 @@ void GPIOF_Handler(void)
 		GPIOF->ICR |= (1UL << 4);	// Clear Interrupt
 		NVIC->ICPR[0] = (1UL << 30); 	// Clear pending bit from NVIC
 	}
+}
+
+/* Handler for TIMER0B interrupt 
+ * - Acts as a clock that times out every 1 second
+ */
+void TIMER0B_Handler(void)
+{
+	toggle_red_LED();
+	
+	TIMER0->ICR |= (1UL << 8);		// Clear interrupt to de-assert IRQ#20 (TIMER0B) signal
+	NVIC->ICPR[0] |= (1UL << 20);	//Clear pending bit in NVIC for IRQ#20 TIMER0B
+	return;
 }
