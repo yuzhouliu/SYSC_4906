@@ -1,3 +1,4 @@
+#include "stdint.h"
 #include "CU_TM4C123.h"
 
 /*-----------Functions for Push Button functionality-----------------------*/

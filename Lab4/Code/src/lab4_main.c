@@ -6,6 +6,10 @@
 
 int main(void)
 {
+	// Test
+	Buffer *this_buf, *good_buf;
+	char char_msg = '0';
+	
 	LED_init();
 	init_pushButton();
 	
@@ -13,8 +17,27 @@ int main(void)
 	
 	init_timer_0B();		// Init periodic timer that interrupts every second
 	
+	Buffer_Pool_init();
+	
 	while(1)
-	{}	
+	{
+		// Test
+		this_buf = get_buffer();
+		if( this_buf == (void *) 0) {
+			turn_on_red_LED();
+			break;
+		}
+		else
+			good_buf = this_buf;
+		this_buf->free = 0;
+		this_buf->message[0] = char_msg;
+		
+		char_msg++;
+	}
+	
+	// Test
+	release_buffer(good_buf);
+	this_buf = get_buffer();
 }
 
 /* Handler for GPIOF interrupts 
@@ -45,7 +68,7 @@ void GPIOF_Handler(void)
  */
 void TIMER0B_Handler(void)
 {
-	toggle_red_LED();
+	toggle_blue_LED();
 	
 	TIMER0->ICR |= (1UL << 8);		// Clear interrupt to de-assert IRQ#20 (TIMER0B) signal
 	NVIC->ICPR[0] |= (1UL << 20);	//Clear pending bit in NVIC for IRQ#20 TIMER0B
