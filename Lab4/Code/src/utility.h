@@ -1,6 +1,15 @@
 #include "stdint.h"
 #include "CU_TM4C123.h"
 
+typedef struct{
+	uint8_t hours;
+	uint8_t minutes;
+	uint8_t seconds;
+	char time_string[11];
+}Time;
+
+static Time system_time;
+
 /*-----------Functions for Push Button functionality-----------------------*/
 
 /* Initializes SW1 (PF4) as interrupt enabled push button. */
@@ -32,3 +41,20 @@ void init_timer_0B(void);
 
 /* Sets the NVIC for timer_0B interrupts */
 static void timer_0B_nvic_init(void);
+
+
+/*----------Functions for string manipulation-----------------------*/
+/* Copies string from src to dest up to the input size
+ */
+void my_strncpy(char *dest, char *src, uint16_t size);
+
+/*----------Functions for time -------------------------------------*/
+
+/* Reset system time to 0
+ */
+void reset_time(void);
+
+/* Increments the system time
+ * Returns current time
+ */
+Time increment_time(void);

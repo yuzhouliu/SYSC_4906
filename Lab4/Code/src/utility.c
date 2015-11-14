@@ -94,3 +94,54 @@ static void timer_0B_nvic_init(void)
 	NVIC->ICPR[0] |= (1UL << 20);	//Clear pending bit to be safe
 	NVIC->ISER[0] |= (1UL << 20);	//Enable interrup at NVIC
 }
+
+/* Copies string from src to dest up to the input size
+ */
+void my_strncpy(char *dest, char *src, uint16_t size)
+{
+	uint16_t i;
+	for(i = 0; i < size; i++) {
+		*dest = *src;
+		dest++;
+		src++;
+	}
+}
+
+/* Reset system time to 0
+ */
+void reset_time(void)
+{
+	system_time.hours = 0;
+	system_time.minutes = 0;
+	system_time.seconds = 0;
+}
+
+/* Increments the system time
+ * Returns current time
+ */
+Time increment_time(void)
+{	
+	system_time.seconds++;						// Update seconds
+	if(system_time.seconds == 60) {		// If seconds is at 60, rollover and update minutes
+		system_time.seconds = 0;
+		system_time.minutes++;
+	}	
+	if(system_time.minutes == 60) {		// If minutes is at 60, rollover and update hours
+		system_time.minutes = 0;
+		system_time.hours = (system_time.hours+1)%100;
+	}
+	
+	system_time.time_string[10] = '\r';
+	system_time.time_string[9] = '\n';
+	system_time.time_string[8] = system_time.seconds%10 + '0';
+	system_time.time_string[7] = system_time.seconds/10 + '0';
+	system_time.time_string[6] = ':';
+	system_time.time_string[5] = system_time.minutes%10 + '0';
+	system_time.time_string[4] = system_time.minutes/10 + '0';
+	system_time.time_string[3] = ':';
+	system_time.time_string[2] = system_time.hours%10 + '0';
+	system_time.time_string[1] = system_time.hours/10 + '0';
+	system_time.time_string[0] = '>';
+	
+	return system_time;
+}
