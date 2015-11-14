@@ -1,50 +1,82 @@
 #include "uart.h"
 
 static Buffer_pool buffer_pool_TX;
+static Buffer_pool buffer_pool_RX;
+
+/* Returns the appropriate buffer pool (TX or RX)
+ */
+Buffer_pool * get_buf_pool(uint8_t buf_pool_type)
+{
+	switch(buf_pool_type) {
+		case BUF_TX:
+			return &buffer_pool_TX;
+		case BUF_RX:
+			return &buffer_pool_RX;
+		default:
+			return (void *)0;
+	}
+}
 
 /* Initialize the buffer pool by setting individual buffers to their
  * default values
  */
-void Buffer_Pool_TX_init(void)
+void Buffer_Pool_init(uint8_t buf_pool_type)
 {
 	uint8_t i;
+	Buffer_pool *buffer_pool;
 	Buffer *curr_buf;
+	
+	buffer_pool = get_buf_pool(buf_pool_type);
+	if (buffer_pool == (void *)0)
+		return;
+	
 	for(i = 0; i < BUF_POOL_SIZE; i++){
-		curr_buf = &(buffer_pool_TX.buffer[i]);		
+		curr_buf = &(buffer_pool->buffer[i]);		
 		curr_buf->count = 0;			// no chars stored
 		curr_buf->curr_i = 0;			// current index at 0
 	}
-	buffer_pool_TX.head = 0;
-	buffer_pool_TX.tail = 0;
-	buffer_pool_TX.count = 0;
+	buffer_pool->head = 0;
+	buffer_pool->tail = 0;
+	buffer_pool->count = 0;
 	curr_buf = curr_buf;				// Get rid of compiler warning "set but never used"
 }
 
 /* Returns a pointer to buffer allocated from the pool
  */
-Buffer * get_buffer_TX(void)
+Buffer * get_buffer(uint8_t buf_pool_type)
 {
+	Buffer_pool *buffer_pool;
 	Buffer *curr_buf;
 	
+	buffer_pool = get_buf_pool(buf_pool_type);
+	if (buffer_pool == (void *)0)
+		return (void *)0;
+	
 	// If there are no free buffers in the buffer pool, return NULL pointer
-	if (buffer_pool_TX.count == BUF_POOL_SIZE){
-		return (void *) 0;
+	if (buffer_pool->count == BUF_POOL_SIZE){
+		return (void *)0;
 	}
 	
 	// Update the buffer pool so that a buffer element has been taken
-	curr_buf = &(buffer_pool_TX.buffer[buffer_pool_TX.tail]);
-	buffer_pool_TX.tail = (buffer_pool_TX.tail + 1) % BUF_POOL_SIZE;
-	buffer_pool_TX.count++;
+	curr_buf = &(buffer_pool->buffer[buffer_pool->tail]);
+	buffer_pool->tail = (buffer_pool->tail + 1) % BUF_POOL_SIZE;
+	buffer_pool->count++;
 	
 	return curr_buf;
 }
 
 /* Releases the input buffer back to pool
  */
-void release_buffer_TX(Buffer * a_buffer)
+void release_buffer(Buffer * a_buffer, uint8_t buf_pool_type)
 {
+	Buffer_pool *buffer_pool;
+	
 	// If the input was NULL, then return
-	if( a_buffer == (void *) 0)
+	if( a_buffer == (void *)0)
+		return;
+	
+	buffer_pool = get_buf_pool(buf_pool_type);
+	if (buffer_pool == (void *)0)
 		return;
 	
 	// Reset the elements inside the buffer
@@ -52,8 +84,8 @@ void release_buffer_TX(Buffer * a_buffer)
 	a_buffer->curr_i = 0;
 	
 	// Update head to point to next buffer element. Update count to reflect # buffers occupied
-	buffer_pool_TX.head = (buffer_pool_TX.head+1) % BUF_POOL_SIZE;
-	buffer_pool_TX.count--;
+	buffer_pool->head = (buffer_pool->head+1) % BUF_POOL_SIZE;
+	buffer_pool->count--;
 }
 
 /* Initialize UART0 for 115,200 baud rate (assuming 16 MHz UART clock),
@@ -108,7 +140,7 @@ void UART0_Handler(void)
 		
 		// If the end of message has been reached, release the current buffer
 		if(curr_buf->curr_i == curr_buf->count) {
-			release_buffer_TX(curr_buf);
+			release_buffer(curr_buf, BUF_TX);
 			return;
 		}
 		
@@ -133,8 +165,24 @@ void UART_OutChar(unsigned char data)
 
 /* Will transmit the input message over UART 
  */
-void Tx_message(Buffer *msg_buffer)
+int Tx_message(char *msg, uint8_t size)
 {
+	Buffer * this_buf;
+	
+	// Entering critical section, disable interrupts
+	__set_PRIMASK(1);		
+	this_buf = get_buffer(BUF_TX);			// Get an available TX buffer
+	__set_PRIMASK(0);
+	// Left critical section, interrupts are enabled again
+	
+	if( this_buf == (void *) 0) {
+			return -1;
+	}
+	
+	my_strncpy(this_buf->message, msg, size);
+	this_buf->count = size;
+	
 	// Unmask interrupts, sets UART0 to start TX
-	UART0->IM |= (1UL << 5);		
+	UART0->IM |= (1UL << 5);
+	return 0;
 }

@@ -1,3 +1,6 @@
+#ifndef _UTILITY_H
+#define _UTILITY_H
+
 #include "stdint.h"
 #include "CU_TM4C123.h"
 
@@ -58,3 +61,5 @@ void reset_time(void);
  * Returns current time
  */
 Time increment_time(void);
+
+#endif /* _UTILITY_H */

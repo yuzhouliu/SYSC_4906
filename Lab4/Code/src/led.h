@@ -1,3 +1,6 @@
+#ifndef _LED_H
+#define _LED_H
+
 /** LED functionality
 **/
 
@@ -15,3 +18,5 @@ void turn_off_blue_LED(void);
 void toggle_red_LED(void);
 void turn_on_red_LED(void);
 void turn_off_red_LED(void);
+
+#endif /* _LED_H */
