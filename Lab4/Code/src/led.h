@@ -1,5 +1,5 @@
-#ifndef _LED_H
-#define _LED_H
+#ifndef LED_H
+#define LED_H
 
 /** LED functionality
 **/

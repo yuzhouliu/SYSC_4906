@@ -1,7 +1,10 @@
 #include "utility.h"
 
 #define SYS_FREQ 16000000UL
+#define TIMER_0A_PRESCALE 255
 #define TIMER_0B_PRESCALE 255
+
+uint8_t suppress_time_output;		// Flag for suppressing the time output
 
 void init_pushButton(void)
 {
@@ -40,28 +43,25 @@ void init_timer_0A(void)
 	if (SYSCTL->RCGCTIMER) {}       //Dummy read to give TIMER time to respond
   TIMER0->CTL &= ~(1UL << 0);      //Disable TIMERA in TIMER0 during config
   TIMER0->CFG = 0x4UL;             //Independent 16-bit timers
-  TIMER0->TAMR = 0x1UL;            //One-shot Timer mode
-  TIMER0->TAPR = 255UL;         //Prescale value
+  TIMER0->TAMR = 0x2UL;            //One-shot Timer mode
+  TIMER0->TAPR = TIMER_0A_PRESCALE;         //Prescale value
 	
 	TIMER0->CTL |= (1UL << 1);				//TASTALL
+	TIMER0->TAILR = SYS_FREQ/(TIMER_0A_PRESCALE+1) -1;	//Set timer reload to give interrupt every second
+	TIMER0->ICR |= (1UL << 0);				// Clear TBTRIS
+	TIMER0->IMR |= (1UL << 0);				// Interrupt Enabled
+		
+	timer_0A_nvic_init();
+	TIMER0->CTL |= (1UL << 0);				// Enable TIMER0A
   return;
 }
 
-/* Delay timer. Input is a multiple of 562us (1T) 
- * Reload value is (SYS_FREQ/256)*562.5us-1 = 34 for 1 period. Don't calculate for wasting processor
- */
-void delay_timer_0A(uint16_t num_periods)
+static void timer_0A_nvic_init(void)
 {
-	if (num_periods > 1872)
-		num_periods = 1872;
-	
-	TIMER0->TAILR = num_periods * 35 -1;	//Set reload value to expire in num_periods*562us
-	TIMER0->CTL |= (1UL << 0);   					//Enable TIMER0A
-	
-	// While timer has not expired, loop
-	while(TIMER0->CTL & 1UL)
-	{}
-	return;
+	/* Init for TIMER0A */
+	NVIC->IP[19] |= (2 << 5);			//IRQ#20 for TIMER0B, see ds pg104
+	NVIC->ICPR[0] |= (1UL << 19);	//Clear pending bit to be safe
+	NVIC->ISER[0] |= (1UL << 19);	//Enable interrup at NVIC
 }
 
 /* Configures TIMER0B periodic and counts down 
@@ -114,6 +114,23 @@ void reset_time(void)
 	system_time.hours = 0;
 	system_time.minutes = 0;
 	system_time.seconds = 0;
+	suppress_time_output = 0;
+}
+
+/* Sets the time variable according to the input hours and minutes
+ */
+void set_time(char h1, char h0, char m1, char m0)
+{
+	system_time.hours = ((h1-'0')*10)+(h0-'0');
+	system_time.minutes = ((m1-'0')*10)+(m0-'0');
+	system_time.seconds = 0;
+}
+
+/* Returns the time variable
+ */
+Time get_time(void)
+{
+	return system_time;
 }
 
 /* Increments the system time
@@ -144,4 +161,24 @@ Time increment_time(void)
 	system_time.time_string[0] = '>';
 	
 	return system_time;
+}
+
+/* Doubles the speed at which the message generation timer times out
+ */
+void double_time_msg_freq(void){
+	uint16_t current_reload = TIMER0->TBILR;
+	
+	if(current_reload >= 1) {
+		TIMER0->TBILR = current_reload/2;
+	}
+}
+
+/* Halves the speed at which the message generation timer times out
+ */
+void half_time_msg_freq(void) {
+	uint16_t current_reload = TIMER0->TBILR;
+	
+	if(current_reload < (65534/2)) {
+		TIMER0->TBILR = current_reload*2;
+	}
 }

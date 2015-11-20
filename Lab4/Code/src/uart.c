@@ -93,8 +93,8 @@ void release_buffer(Buffer * a_buffer, uint8_t buf_pool_type)
  */
 void UART_init(void) 
 {
-	SYSCTL->RCGCUART |= (1UL << 0);		// activate UART0
-	SYSCTL->RCGCGPIO |= (1UL << 0); 	// activate port A
+	SYSCTL->RCGCUART |= SYSCTL_RCGCUART_R0;		// activate UART0
+	SYSCTL->RCGCGPIO |= SYSCTL_RCGCGPIO_R0; 	// activate port A
 	UART0->CTL &= ~UART_CTL_UARTEN;		// Disable UART
 	UART0->IBRD = 8;									// 16-bit integer baud rate divisor: 16,000,000/(16 * 115,200) = 8.680555 -> 8
 	UART0->FBRD = 44;									// 8-bit fractional baud rate divisor: 0.680555 * 64 + 0.5 = 44
@@ -105,12 +105,20 @@ void UART_init(void)
   GPIOA->DEN |= (1UL << 0)|(1UL << 1);      // enable digital I/O on PA1-0                                           
   GPIOA->PCTL = (GPIOA -> PCTL & 0xFFFFFF00)+0x00000011;  // configure PA1-0 as UART   (just in case)
 	
-	UART0->ICR |= (1UL << 5);								// TX interrupt clear
-	UART0->IM &= ~(1UL << 5);								// Mask TX Interrupts
-	UART0->CTL |= (1UL << 4);								// Interrupt on End Of Transmission
-	UART0->CTL |= UART_CTL_UARTEN;          // enable UART
+	UART0->ICR |= (1UL << 5);						// TX interrupt clear
+	UART0->CTL |= (1UL << 4);							// Interrupt on End Of Transmission	
+	
+	//UART0->ICR = 1UL;											// Clear time-out interupt
+	//UART0->ICR |= (1UL << 4);						// RX interrupt clear
+	//UART0->IFLS &= ~UART_IFLS_RX_M;			// Trigger when >= 1/8 FIFO full
+	
+	//UART0->IM |= (UART_IM_TXIM | UART_IM_RXIM);
+	UART0->IM |= UART_IM_TXIM;						// TX interrupt enable
+	UART0->CTL |= UART_CTL_UARTEN;        // enable UART
 	
 	UART0_nvic_init();
+	
+	// Send out test string
 	UART_OutChar('>');
 	UART_OutChar('\n');
 	UART_OutChar('\r');
@@ -126,6 +134,7 @@ static void UART0_nvic_init(void)
 void UART0_Handler(void)
 {
 	Buffer * curr_buf;
+	//char rx_msg;
 	
 	// If interrupt caused by empty TX FIFO 
 	if ((UART0->FR & UART_FR_TXFF) == 0) {
@@ -147,9 +156,19 @@ void UART0_Handler(void)
 		// Otherwise, write the current char to TX FIFO and update curr_i
 		UART0->DR = curr_buf->message[curr_buf->curr_i];
 		curr_buf->curr_i++;
+		
+		UART0->ICR |= (1UL << 5);			// Clear interrupt from UART0
 	}
+	/*
+	// If interrupt caused by RX
+	else if ((UART0->RIS & UART_RIS_RXRIS) != 0) {
+		toggle_blue_LED();
+		//rx_msg = (char) (UART0->DR & 0xFF);
+		//Tx_message(&rx_msg, 1);
+		UART0->ICR |= (1UL << 4);								// RX interrupt clear
+	}
+	*/
 	
-	UART0->ICR |= (1UL << 5);			// Clear interrupt from UART0
 	NVIC->ICPR[0] |= (1UL << 5);	//Clear UART0 interrupt pending bit
 }
 
@@ -185,4 +204,66 @@ int Tx_message(char *msg, uint8_t size)
 	// Unmask interrupts, sets UART0 to start TX
 	UART0->IM |= (1UL << 5);
 	return 0;
+}
+
+/* Checks to see if a RX message is available
+ * Note this method is polling method. In the future may come back and revise this
+ */
+uint8_t UART_rx_available(void) 
+{
+	return !(UART0->FR & UART_FR_RXFE);
+}
+
+/* Handles the received character from UART
+ * Determines the appropriate action for the input command
+ */
+void Rx_message(void) 
+{
+	static char char_input[6];
+	static int count = 0;
+	char curr_char;
+	
+	curr_char = UART0->DR & 0xFF;
+	Tx_message(&curr_char, 1);
+	
+	if(curr_char == '\r') {
+		if(count == 1) {
+			// If it is single letter command
+			switch(char_input[0]) {
+				case 'p':
+					// Pause the generation of time messages
+					suppress_time_output = 1;
+					break;
+				case 'c':
+					// Continue generation of time messages
+					suppress_time_output = 0;
+					break;
+				case 'f':
+					// Double the frequency of time message output
+					double_time_msg_freq();
+					break;
+				case 's':
+					// Half the frequency of time message output
+					half_time_msg_freq();
+					break;
+				default:
+					//Unknown command
+					toggle_blue_LED();
+			}
+		}
+		else if((count == 6) && (char_input[0] == 'T')) {
+			// If it is set time command
+			set_time(char_input[1], char_input[2], char_input[4], char_input[5]);
+		}
+		else {
+			// Unknown command
+			toggle_blue_LED();
+		}
+		count = 0;
+		curr_char = '\n';
+		Tx_message(&curr_char, 1);
+	}
+	else {
+		char_input[count++] = curr_char;
+	}
 }

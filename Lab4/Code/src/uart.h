@@ -1,9 +1,10 @@
-#ifndef _UART_H
-#define _UART_H
+#ifndef UART_H
+#define UART_H
 
 #include <stdint.h>
 #include "CU_TM4C123.h"
 #include "utility.h"
+#include "led.h"
 
 #define MSG_SIZE 20
 #define BUF_POOL_SIZE 5
@@ -25,7 +26,6 @@ typedef struct {
 	uint8_t count;
 	Buffer buffer[BUF_POOL_SIZE];		// Array of buffers
 }Buffer_pool;
-
 
 /* Returns the appropriate buffer pool (TX or RX)
  */
@@ -59,5 +59,15 @@ void UART_OutChar(unsigned char data);
 /* Will transmit the input message over UART 
  */
 int Tx_message(char *msg, uint8_t size);
+
+/* Checks to see if a RX message is available
+ * Note this method is polling method. In the future may come back and revise this
+ */
+uint8_t UART_rx_available(void);
+
+/* Handles the received character from UART
+ * Determines the appropriate action for the input command
+ */
+void Rx_message(void) ;
 
 #endif /* _UART_H */
