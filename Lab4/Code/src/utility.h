@@ -12,7 +12,6 @@ typedef struct{
 }Time;
 
 extern uint8_t suppress_time_output;		// Flag for suppressing the time output
-static Time system_time;
 
 /*-----------Functions for Push Button functionality-----------------------*/
 

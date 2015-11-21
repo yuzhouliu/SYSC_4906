@@ -5,6 +5,7 @@
 #define TIMER_0B_PRESCALE 255
 
 uint8_t suppress_time_output;		// Flag for suppressing the time output
+static Time system_time;				// Variable to store system time
 
 void init_pushButton(void)
 {
@@ -139,11 +140,11 @@ Time get_time(void)
 Time increment_time(void)
 {	
 	system_time.seconds++;						// Update seconds
-	if(system_time.seconds == 60) {		// If seconds is at 60, rollover and update minutes
+	if(system_time.seconds >= 60) {		// If seconds is at 60, rollover and update minutes
 		system_time.seconds = 0;
 		system_time.minutes++;
 	}	
-	if(system_time.minutes == 60) {		// If minutes is at 60, rollover and update hours
+	if(system_time.minutes >= 60) {		// If minutes is at 60, rollover and update hours
 		system_time.minutes = 0;
 		system_time.hours = (system_time.hours+1)%100;
 	}
