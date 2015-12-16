@@ -17,6 +17,8 @@ uint16_t mu = 1;		// Fixed point representation 8.8: 00000000.00000001 = 0.004
 
 int main(void)
 {
+	sysclk_80M_init();
+	
 	set_circ_buffer_0(&input_ref);
 	
 	LED_init();
@@ -25,6 +27,7 @@ int main(void)
 	init_ADC();
 	
 	while(1) {
+		/*
 		switch(state) {
 			case WAITING_FOR_ADC:
 				break;
@@ -40,6 +43,7 @@ int main(void)
 				turn_on_red_LED();
 				break;
 		}	
+		*/
 	}	
 }
 
@@ -91,4 +95,19 @@ void update_LMS_weights()
 	}
 	// If no error, then don't do anything
 	else {}
+}
+
+void sysclk_80M_init(void)
+{
+	/* this code fragment makes Power On Reset (POR) assumptions:
+	default: PWRDN = 1, BYPASS = 1, USESYSDIV = 0, SYSDIV = 0xF
+	want: PWRDN = 0, BYPASS = 0 -> will use SYSDIV by default, SYSDIV = 0x3 */
+	// 1) activate PLL by clearing PWRDN (PWRDN is one-bit value)
+	SYSCTL->RCC &= ~SYSCTL_RCC_PWRDN;
+	// 2) clear then set the desired system divider (SYSDIV is multi-bit value)
+	SYSCTL->RCC = (SYSCTL->RCC & ~(SYSCTL_RCC_SYSDIV_M ))| ( 0x3UL<<SYSCTL_RCC_SYSDIV_S ); // SYSDIV = 0x3 for 50 MHz clock
+	// 3) poll PLLSTAT to wait for the PLL to lock after activation
+	while(( SYSCTL->PLLSTAT & SYSCTL_PLLSTAT_LOCK )==0){};
+	// 4) change clock to use of PLL (and force use of SYSDIV) by clearing BYPASS
+	SYSCTL->RCC &= ~SYSCTL_RCC_BYPASS;
 }

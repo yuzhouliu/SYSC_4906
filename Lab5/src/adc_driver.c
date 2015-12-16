@@ -87,13 +87,23 @@ static void init_adc_nvic(void)
  */
 void ADC0SS3_Handler(void)
 {		
-	toggle_blue_LED();
-
-	input_ref.buffer[input_ref.tail] = ADC0->SSFIFO3;     // get input sample
+	/*
+	uint16_t noise_ref = ADC0->SSFIFO3;
+	//toggle_blue_LED();
+	
+	input_ref.buffer[input_ref.tail] = noise_ref;     // get input sample
 	input_ref.tail += (input_ref.tail+1)%FILTER_LENGTH;		// Update index for most recent entry
 	input_ref.head += (input_ref.head+1)%FILTER_LENGTH;		// Update index for the last entry
 		
 	state = NOISE_REF_READY;
+	*/
+
+	set_voltage(ADC0->SSFIFO3);
+	//uint16_t noise_ref = ADC0->SSFIFO0;
+	
+	//PWM0->_2_CMPA = noise_ref>>4;
+	
+	//PWM0->_2_CMPA = (ADC0->SSFIFO3-160)>>4;
 	
 	ADC0->ISC |= (1UL << 3);
 	NVIC->ICPR[0] = (1UL << 17);	//Clear pending bit in NVIC for IRQ#17 ADC0
@@ -105,13 +115,13 @@ void ADC0SS3_Handler(void)
  */
 void ADC1SS3_Handler(void)
 {
-	uint16_t error_here;
-	error_here = ADC1->SSFIFO3;
-	error = error_here;
+	//uint16_t error_here;
+	//error_here = ADC1->SSFIFO3;
+	error = ADC1->SSFIFO3;
 	
 	//set_voltage(error_here);			// Debug - Make a copy of this voltage onto PE4 (PWM output)
 	
-	toggle_red_LED();
+	//toggle_red_LED();
 	
 	state = ERROR_READY;
 	

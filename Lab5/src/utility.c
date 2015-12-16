@@ -3,9 +3,9 @@
 #define SYS_FREQ 16000000UL
 #define PRESCALE 255UL
 
-#define SAMPLING_RATE 488		//Sampling rate of 488Hz
+#define SAMPLING_RATE 1952		//Sampling rate of 488Hz
 
-static uint16_t frequency = 62500;
+static uint32_t frequency = 62500;
 static uint16_t pwm_load = 0;
 
 /* Configures TIMER0A periodic and counts down 
@@ -42,13 +42,16 @@ void set_frequency(uint16_t frequency)
  */
 void set_voltage(uint16_t adc_voltage)
 {
+	/*
 	uint16_t ticks_cmpa;
-	ticks_cmpa = (4096-adc_voltage)/16;
+	ticks_cmpa = adc_voltage/16;
+	//ticks_cmpa = (4096-adc_voltage)/16;
 	
 	if (ticks_cmpa == pwm_load)
 		ticks_cmpa--;
-	
-	PWM0->_2_CMPA = ticks_cmpa;
+	*/
+	//PWM0->_2_CMPA = ticks_cmpa;
+	PWM0->_2_CMPA = adc_voltage>>4;			// adc_voltage/16
 }
 
 static void PWM_GPIO_init(void)
@@ -81,7 +84,7 @@ void PWM_init(void)
 	PWM0->_2_CTL = 0x0UL;			// Immediate update to parameters
 	PWM0->_2_GENA = 0x8CUL;			// Drive PWM high when counter matches LOAD, drive low when matches CMPA
 	set_frequency(frequency);
-	set_voltage(600);
+	set_voltage(5000);
 	PWM0->_2_CTL = 0x1UL;			// enabled PWM module 0, generator 2
 	PWM0->ENABLE |= (1UL << 4);		// enable PWM module 0
 }

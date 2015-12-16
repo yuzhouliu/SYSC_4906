@@ -18,6 +18,8 @@ typedef struct {
 extern signed long int weight_coeff[FILTER_LENGTH];
 extern circular_buffer input_ref;
 
+void sysclk_80M_init(void);
+
 /* Initialize all variables in circular buffer to 0
  */
 void set_circ_buffer_0(circular_buffer *buff);
